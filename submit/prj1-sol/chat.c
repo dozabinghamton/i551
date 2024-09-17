@@ -12,10 +12,8 @@
 ChatMsgNode *head = NULL;
 
 // TODO: define chat ADT
-// 
 
-
-// this function takes pointer of a chatMsg stucture and returns pointer of newly created ChatMsgNode
+// This function takes pointer of a chatMsg stucture and returns pointer of newly created ChatMsgNode
 // We are allocating memory using malloc of size specified
 //Based on the condition if node  is null we are sending message suitable.
 
@@ -23,8 +21,9 @@ ChatMsgNode *head = NULL;
 // We will link it to newNode and sets it next to null as we normally  do in Linked List
 
 ChatMsgNode *create_chat_msg_node(ChatMsg *chat_msg) {
+
   ChatMsgNode *node = malloc(sizeof(ChatMsgNode));
-  if (!node) {
+  if (node == NULL) {
     perror("Failed to allocate memory for chat message node");
     exit(EXIT_FAILURE);
   }
@@ -86,7 +85,7 @@ ChatMsg *create_chat_message(const char *user, const char *room,
                              const char *message, char **topics,
                              size_t num_topics, ErrNum *err) {
   ChatMsg *chat_msg = malloc(sizeof(ChatMsg));
-  if (!chat_msg) {
+  if (chat_msg == NULL) {
     *err = MEM_ERR;
     return NULL;
   }
@@ -158,7 +157,10 @@ ChatMsg *create_chat_message(const char *user, const char *room,
 //Free memory of user, room and strings
 
 void free_chat_message(ChatMsg *chat_msg) {
-  if (!chat_msg) return;
+  if (chat_msg==NULL)
+  {
+     return;
+  } 
 
   
   free(chat_msg->user);
@@ -177,6 +179,7 @@ void free_chat_message(ChatMsg *chat_msg) {
   free(chat_msg);
 }
 
+// Function to diplay chat message based on room and topics
 void display_chat_messages(size_t count, char *room, char **topics, size_t num_topics, FILE *err) {
   // Traverse the list and push messages onto the stack
   ChatMsgNode *current = head;
@@ -186,7 +189,6 @@ void display_chat_messages(size_t count, char *room, char **topics, size_t num_t
     ChatMsg *chat_msg = current->chat_msg;
     if (strcmp(room, current->chat_msg->room) == 0 && message_matches_topics(chat_msg, topics, num_topics)) {
       // Print message details
-      //printf("%s %s ", chat_msg->user, chat_msg->room);
       fprintf(err, "%s %s ", chat_msg->user, chat_msg->room);
 
       for (size_t i = 0; i < chat_msg->num_topics; i++) {
@@ -218,6 +220,8 @@ void display_chat_messages(size_t count, char *room, char **topics, size_t num_t
 
 }
 
+//Checking if a room exists in linkedList
+
 bool is_valid_room(char *room) {
 ChatMsgNode *current = head;
   while (current != NULL) {
@@ -228,10 +232,18 @@ ChatMsgNode *current = head;
   }
   return false;
 }
+// Same checking if topics are valid
 
 bool is_valid_topics(char **topics, size_t num_topics){
-    if (num_topics == 0) return true;  // No topics to match, always true
+    if (num_topics == 0) 
+    {
+        return true;
+
+     }
+          // No topics to match, always true
+
       // Iterate through each topic in the chat message
+
       for (size_t i = 0; i < num_topics; i++) {
         bool found = false;
         ChatMsgNode *current = head;
@@ -252,7 +264,10 @@ bool is_valid_topics(char **topics, size_t num_topics){
         if (!found) return false;  // If any topic is not found, return false
       }
   return true;
+  
 }
+
+
 
 void free_chats() {
   ChatMsgNode *current = head;
@@ -273,7 +288,11 @@ void free_chats() {
 
 bool message_matches_topics(ChatMsg *chat_msg, char **topics,
                             size_t num_topics) {
-  if (num_topics == 0) return true;  // No topics to match, always true
+  if (num_topics == 0) 
+  {
+    return true; 
+  }
+     // No topics to match, always true
 
   // Iterate through each topic in the chat message
   for (size_t i = 0; i < num_topics; i++) {
@@ -284,7 +303,11 @@ bool message_matches_topics(ChatMsg *chat_msg, char **topics,
         break;
       }
     }
-    if (!found) return false;  // If any topic is not found, return false
+    if (!found) 
+    {
+        return false; 
+     }
+         // If any topic is not found, return false
   }
   return true;  // All topics are matched
 }

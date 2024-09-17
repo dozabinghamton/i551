@@ -147,10 +147,20 @@
 #define MAX_STRING_LENGTH 100
 
 // Function to copy a string into newly allocated memory
+//This allocates memory fpr and copies string.
+//This ensure dynamic memory allocation for string
+// like user names , room mates and topics.
+
 char* allocate_and_copy_string(const char *str) {
-    if (str == NULL) return NULL;
+
+    if (str == NULL) 
+    {
+      return NULL;
+    }
+
     size_t length = strlen(str) + 1; // +1 for the null terminator
     char *copy = malloc(length);
+
     if (copy == NULL) {
         perror("Failed to allocate memory");
         exit(EXIT_FAILURE);
@@ -159,26 +169,46 @@ char* allocate_and_copy_string(const char *str) {
     return copy;
 }
 
+// This concatenates new line to existing messages.
+
 char* concatenate_message(char *message, const char *line) {
-    size_t current_length = message ? strlen(message) : 0;
+  
+     
+        size_t current_length;
+
+        if (message != NULL) 
+        {
+          current_length = strlen(message);
+        }
+        else
+        {
+          current_length = 0;
+        }
+
     size_t line_length = strlen(line);
+
     char *new_message = realloc(message, current_length + line_length + 2); // +2 for newline and null terminator
 
-    if (new_message == NULL) {
+    if (new_message == NULL) 
+    {
         return NULL; // Memory allocation failed
     }
 
-    if (message) {
+    if (message)
+     {
         strcat(new_message, line);
-    } else {
+     } 
+    else
+     {
         strcpy(new_message, line);
-    }
-//    strcat(new_message, "\n"); // Append newline
+     }
+
 
     return new_message;
 }
-
+// Trims leading and trailing whitespace from a string.
 void trim_whitespace(char *str) {
+    
     if (str == NULL) {
         return; // Handle null pointer
     }
@@ -208,12 +238,16 @@ void trim_whitespace(char *str) {
     memmove(str, start, strlen(start) + 1);
 }
 
+// This is main function that handles I/O commands.
+
 
 void chat_io(const char *prompt, FILE *in, FILE *out, FILE *err) {
+  
     char *line = NULL;
     size_t len = 0;
     ssize_t read;
     ErrNum errnum = NO_ERR;
+
 
     while ((read = getline(&line, &len, in)) != -1) {
         // Strip newline character
@@ -397,7 +431,7 @@ void to_lowercase(char *str) {
     }
 }
 
-//#define NO_CHAT_IO_MAIN to allow an alternate main()
+
 #ifndef NO_CHAT_IO_MAIN
 
 #include <unistd.h>
