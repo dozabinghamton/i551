@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "msgargs.h": "c",
+        "stdbool.h": "c",
+        "errnum.h": "c"
+    }
+}

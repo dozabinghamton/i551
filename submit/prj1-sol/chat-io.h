@@ -126,5 +126,6 @@
  *
  */
 void chat_io(const char *prompt, FILE *in, FILE *out, FILE *err);
+void to_lowercase(char *str);
 
 #endif // #ifndef CHAT_IO_H_
