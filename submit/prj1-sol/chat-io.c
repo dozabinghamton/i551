@@ -133,12 +133,305 @@
  *  not be cleaned up.
  *
  */
-void
-chat_io(const char *prompt, FILE *in, FILE *out, FILE *err)
-{
+
+
+ #define MAX_USER_LENGTH 100
+ #define MAX_ROOM_LENGTH 100
+ #define MAX_TOPIC_LENGTH 100
+ #define MAX_MESSAGE_LENGTH 1024
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define MAX_STRING_LENGTH 100
+
+// Function to copy a string into newly allocated memory
+//This allocates memory fpr and copies string.
+//This ensure dynamic memory allocation for string
+// like user names , room mates and topics.
+
+char* allocate_and_copy_string(const char *str) {
+
+    if (str == NULL) 
+    {
+      return NULL;
+    }
+
+    size_t length = strlen(str) + 1; // +1 for the null terminator
+    char *copy = malloc(length);
+
+    if (copy == NULL) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(copy, str);
+    return copy;
 }
 
-//#define NO_CHAT_IO_MAIN to allow an alternate main()
+// This concatenates new line to existing messages.
+
+char* concatenate_message(char *message, const char *line) {
+  
+     
+        size_t current_length;
+
+        if (message != NULL) 
+        {
+          current_length = strlen(message);
+        }
+        else
+        {
+          current_length = 0;
+        }
+
+    size_t line_length = strlen(line);
+
+    char *new_message = realloc(message, current_length + line_length + 2); // +2 for newline and null terminator
+
+    if (new_message == NULL) 
+    {
+        return NULL; // Memory allocation failed
+    }
+
+    if (message)
+     {
+        strcat(new_message, line);
+     } 
+    else
+     {
+        strcpy(new_message, line);
+     }
+
+
+    return new_message;
+}
+// Trims leading and trailing whitespace from a string.
+void trim_whitespace(char *str) {
+    
+    if (str == NULL) {
+        return; // Handle null pointer
+    }
+
+    // Trim leading whitespace
+    char *start = str;
+    while (isspace((unsigned char)*start)) {
+        start++;
+    }
+
+    // If the string is all whitespace
+    if (*start == '\0') {
+        *str = '\0'; // Empty string
+        return;
+    }
+
+    // Trim trailing whitespace
+    char *end = start + strlen(start) - 1;
+    while (end > start && isspace((unsigned char)*end)) {
+        end--;
+    }
+
+    // Null-terminate the trimmed string
+    *(end + 1) = '\0';
+
+    // Move trimmed string to the beginning
+    memmove(str, start, strlen(start) + 1);
+}
+
+// This is main function that handles I/O commands.
+
+
+void chat_io(const char *prompt, FILE *in, FILE *out, FILE *err) {
+  
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    ErrNum errnum = NO_ERR;
+
+
+    while ((read = getline(&line, &len, in)) != -1) {
+        // Strip newline character
+        if (line[read - 1] == '\n') {
+            line[read - 1] = '\0';
+        }
+
+        // Determine command type
+        trim_whitespace(line);
+        if (line[0] == '+') {
+            // Handle ADD command
+            char *token = strtok(line + 1, " ");  // Skip the leading '+'
+            char *user = NULL;
+            char *room = NULL;
+            char **topics = NULL;
+            size_t num_topics = 0;
+            char *message = NULL;
+
+            // Parses user
+            if (token && token[0] == '@') {
+                user = allocate_and_copy_string(token);
+                token = strtok(NULL, " ");
+            } else {
+                fprintf(err, "BAD_USER\n");
+                continue;
+            }
+            //parses room
+            if (token && isalpha(token[0])) {
+                room = allocate_and_copy_string(token);
+                token = strtok(NULL, " ");
+            } else {
+                fprintf(err, "BAD_ROOM\n");
+                free(user);
+                continue;
+            }
+
+            // // Parses topics
+            if(token && token[0] == '#') {
+                //Multiple topics
+                while (token && token[0] == '#') {
+                    if (num_topics == 0) {
+                        topics = (char **)malloc(sizeof(char *));
+                    } else {
+                        topics = (char **)realloc(topics, (num_topics + 1) * sizeof(char *)); //multiple topics
+                    }
+                    if (topics == NULL) {
+                        perror("Failed to allocate memory for topics");
+                        free(user);
+                        free(room);
+                        continue;
+                    }
+                    topics[num_topics] = allocate_and_copy_string(token);
+                    to_lowercase(topics[num_topics]);
+                    num_topics++;
+                    token = strtok(NULL, " ");
+                }
+            } else {
+                fprintf(err, "BAD_TOPIC\n");
+                free(user);
+                free(room);
+                continue;
+            }
+
+            // Collect message lines until 'period'
+            while ((read = getline(&line, &len, in)) != -1) {
+                // Check for end of message input
+                if (line[0] == '.') {
+                    break;  // End of message input
+                }
+                message = concatenate_message(message, line);
+                if (message == NULL) {
+                    fprintf(err, "NO_MSG\n");
+                    free(user);
+                    free(room);
+                    for (size_t i = 0; i < num_topics; i++) {
+                        free(topics[i]);
+                    }
+                    free(topics);
+                    free(line);
+                    return;
+                }
+            }
+
+            // Create and store chat message
+            if (user && room && message) {
+                ChatMsg *chat_msg = create_chat_message(user, room, message, topics, num_topics, &errnum);
+                if (errnum == NO_ERR) {
+                    // Example: Store or handle the chat message
+                    add_chat_msg(chat_msg);
+                } else {
+                    fprintf(err, "Error creating chat message: %s\n", errnum_to_string(errnum));
+                }
+            } else {
+                fprintf(err, "NO_MSG\n");
+            }
+
+            // Free topics array
+            for (size_t i = 0; i < num_topics; i++) {
+                free(topics[i]);
+            }
+            free(topics);
+            free(user);
+            free(room);
+
+        } else if (line[0] == '?') {
+            // Handle QUERY command
+            char *token = strtok(line + 2, " ");  // Skip the leading '?'
+            char *room = NULL;
+            size_t count = 1;  // Default count
+            char **topics = NULL;
+            size_t num_topics = 0;
+
+            // Parse QUERY command components: room
+            if (token && isalpha(token[0])) {
+                room = allocate_and_copy_string(token);
+                token = strtok(NULL, " ");
+            } else {
+                fprintf(err, "BAD_ROOM\n");
+                continue;
+            }
+
+            if (token && isdigit(token[0])) {
+                count = (size_t)atoi(allocate_and_copy_string(token));
+                if(count < 0) {
+                    fprintf(err, "BAD_COUNT\n");
+                    free(room);
+                    continue;
+                }
+                token = strtok(NULL, " ");
+            }
+
+            // Collect topics
+            if(token && token[0] == '#') {
+                while (token && token[0] == '#') {
+                    if (num_topics == 0) {
+                        topics = (char **)malloc(sizeof(char *));
+                    } else {
+                        topics = (char **)realloc(topics, (num_topics + 1) * sizeof(char *));
+                    }
+                    if (topics == NULL) {
+                        perror("Failed to allocate memory for topics");
+                        free(room);
+                        continue;
+                    }
+                    topics[num_topics] = allocate_and_copy_string(token);
+                    to_lowercase(topics[num_topics]);
+                    num_topics++;
+                    token = strtok(NULL, " ");
+                }
+            }  else if(token) {
+                fprintf(err, "BAD_TOPIC\n");
+                free(room);
+                continue;
+            }
+
+            // Perform query and display results
+            display_chat_messages(count, room, topics, num_topics, err);
+
+            // Free topics array
+            for (size_t i = 0; i < num_topics; i++) {
+                free(topics[i]);
+            }
+            free(topics);
+            free(room);
+        } else if (line[0] != '.') {
+               fprintf(err, "BAD_COMMAND\n");
+        }
+    }
+
+    // Free the line buffer
+    free(line);
+}
+
+void to_lowercase(char *str) {
+    if (str == NULL) {
+        return; // Handle null pointer
+    }
+
+    for (size_t i = 0; str[i] != '\0'; i++) {
+        str[i] = tolower((unsigned char) str[i]);
+    }
+}
+
+
 #ifndef NO_CHAT_IO_MAIN
 
 #include <unistd.h>
